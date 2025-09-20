@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Hat Enterprise Linux Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .quiz-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #1a202c;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #e2e8f0;
+        }
+        .option-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border: 2px solid #4a5568;
+            border-radius: 0.5rem;
+            background-color: #2d3748;
+            color: #cbd5e0;
+            transition: all 0.2s ease-in-out;
+        }
+        .option-btn:hover {
+            background-color: #4a5568;
+            border-color: #a0aec0;
+        }
+        .option-btn.selected {
+            background-color: #4299e1;
+            border-color: #4299e1;
+            color: white;
+        }
+        .option-btn.correct {
+            background-color: #48bb78;
+            border-color: #48bb78;
+            color: white;
+        }
+        .option-btn.incorrect {
+            background-color: #f56565;
+            border-color: #f56565;
+            color: white;
+        }
+        .control-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #2d3748;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 10px;
+            width: 0%;
+            background-color: #4299e1;
+            transition: width 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div class="quiz-container">
+        <h1 class="text-3xl font-bold text-center mb-2 text-red-500">Unit Test 1 Practice Activity</h1>
+        <p class="text-center text-gray-400 mb-6">Test your knowledge!</p>
+        
+        <div id="quiz-content">
+            <div class="progress-bar-container">
+                <div id="progress-bar" class="progress-bar"></div>
+            </div>
+            <div id="question-counter" class="text-right text-gray-400 mb-2"></div>
+            <div id="question-container">
+                <p id="question-text" class="question-text"></p>
+                <div id="options-container"></div>
+            </div>
+            <div id="feedback" class="mt-4 font-semibold"></div>
+            <div class="flex justify-between mt-6">
+                <button id="next-btn" class="control-btn bg-blue-600 hover:bg-blue-700 text-white">Next</button>
+            </div>
+        </div>
+
+        <div id="result-container" class="hidden text-center">
+            <h2 class="text-2xl font-bold mb-4">Quiz Complete!</h2>
+            <p class="text-xl mb-2">Your Score: <span id="score" class="font-bold text-green-400"></span></p>
+            <p id="score-message" class="text-gray-400 mb-6"></p>
+            <button id="restart-btn" class="control-btn bg-red-600 hover:bg-red-700 text-white">Restart Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            // Chapter 1 Questions
+            {
+                question: "What is a key benefit of open source software?",
+                options: ["Only the original developer can modify it", "Source code is available for anyone to study, modify, and share", "It is always free of charge", "It is less secure than proprietary software"],
+                answer: "Source code is available for anyone to study, modify, and share"
+            },
+            {
+                question: "Which of the following is NOT a benefit of Linux?",
+                options: ["It has a powerful command-line interface (CLI)", "It is a modular operating system", "It is developed and maintained by a single company", "It is widely used in data centers and cloud computing"],
+                answer: "It is developed and maintained by a single company"
+            },
+            {
+                question: "What type of open source license requires that modifications be shared under the same terms?",
+                options: ["Permissive", "Proprietary", "Copyleft", "Commercial"],
+                answer: "Copyleft"
+            },
+            {
+                question: "What is a Linux distribution?",
+                options: ["The Linux kernel only", "A specific hardware model that runs Linux", "An installable operating system constructed from a Linux kernel and other software", "A software application for Linux"],
+                answer: "An installable operating system constructed from a Linux kernel and other software"
+            },
+            {
+                question: "Which distribution serves as the development lab for features to be incorporated into RHEL?",
+                options: ["CentOS Stream", "Debian", "Ubuntu", "Fedora"],
+                answer: "Fedora"
+            },
+            {
+                question: "What is the primary role of CentOS Stream in the Red Hat ecosystem?",
+                options: ["A long-term stable release for enterprises", "A community-supported version of Fedora", "The upstream development project for the next version of RHEL", "A lightweight container-only OS"],
+                answer: "The upstream development project for the next version of RHEL"
+            },
+            {
+                question: "What does RHEL stand for?",
+                options: ["Red Hat Enhanced Linux", "Red Hat Enterprise Linux", "Red Hat Embedded Linux", "Red Hat Experimental Linux"],
+                answer: "Red Hat Enterprise Linux"
+            },
+            {
+                question: "Which of these is a lightweight, freely redistributable derivative of RHEL for container development?",
+                options: ["Fedora CoreOS", "Red Hat CoreOS", "Red Hat Universal Base Image (UBI)", "CentOS Linux"],
+                answer: "Red Hat Universal Base Image (UBI)"
+            },
+            {
+                question: "What is the expected lifecycle of a RHEL release?",
+                options: ["12-18 months", "5 years", "10 years", "1 year"],
+                answer: "10 years"
+            },
+            {
+                question: "How can an individual obtain a no-cost RHEL subscription for development purposes?",
+                options: ["Through a university program only", "By purchasing a server from Red Hat", "By joining the Red Hat Developer Program", "It is not possible to get a no-cost subscription"],
+                answer: "By joining the Red Hat Developer Program"
+            },
+            // Chapter 2 Questions
+            {
+                question: "What program provides the Linux command line interface?",
+                options: ["Terminal", "Console", "Shell", "Kernel"],
+                answer: "Shell"
+            },
+            {
+                question: "What is the default shell in Red Hat Enterprise Linux 9?",
+                options: ["zsh", "sh", "csh", "bash"],
+                answer: "bash"
+            },
+            {
+                question: "In a shell prompt `[user@host ~]$`, what does the `$` character indicate?",
+                options: ["The shell is running as the superuser", "The shell is running as a regular user", "The system has an error", "The command is a script"],
+                answer: "The shell is running as a regular user"
+            },
+             {
+                question: "Which part of the command `usermod -L user01` is the argument?",
+                options: ["usermod", "-L", "user01", "None of the above"],
+                answer: "user01"
+            },
+            {
+                question: "How can you switch between virtual consoles on a local Linux system?",
+                options: ["Alt+Tab", "Ctrl+Alt+Delete", "Ctrl+Alt+Function Key (F1-F6)", "Shift+Arrow Keys"],
+                answer: "Ctrl+Alt+Function Key (F1-F6)"
+            },
+            {
+                question: "What is the most common command to get a shell prompt on a remote Linux system over the network?",
+                options: ["telnet", "ftp", "ssh", "vnc"],
+                answer: "ssh"
+            },
+            {
+                question: "What is the default desktop environment in RHEL 9?",
+                options: ["KDE Plasma", "XFCE", "GNOME 40", "MATE"],
+                answer: "GNOME 40"
+            },
+             {
+                question: "In the GNOME Shell, what is the 'dash'?",
+                options: ["The top bar with system controls", "The area for selecting workspaces", "A configurable list of favorite and running applications", "The search bar in the Activities overview"],
+                answer: "A configurable list of favorite and running applications"
+            },
+            {
+                question: "Which command changes the current user's password?",
+                options: ["password", "chpasswd", "passwd", "userpass"],
+                answer: "passwd"
+            },
+            {
+                question: "Which command displays the type of a file?",
+                options: ["type", "file", "whatis", "stat"],
+                answer: "file"
+            },
+            {
+                question: "How can you view the contents of a long text file one page at a time?",
+                options: ["cat", "more", "less", "head"],
+                answer: "less"
+            },
+            {
+                question: "What does the `tail -n 5 logfile.txt` command do?",
+                options: ["Displays the first 5 lines of logfile.txt", "Displays the last 5 lines of logfile.txt", "Creates a 5-line file named logfile.txt", "Deletes the last 5 lines of logfile.txt"],
+                answer: "Displays the last 5 lines of logfile.txt"
+            },
+            {
+                question: "What is the purpose of Tab completion in the bash shell?",
+                options: ["To open a new terminal tab", "To quickly complete commands or file names", "To indent code in a text editor", "To switch between running applications"],
+                answer: "To quickly complete commands or file names"
+            },
+            {
+                question: "Which command displays a list of previously executed commands?",
+                options: ["log", "history", "commands", "prev"],
+                answer: "history"
+            },
+            {
+                question: "What is the Bash shortcut to jump to the beginning of the command line?",
+                options: ["Ctrl+E", "Ctrl+A", "Home", "Alt+B"],
+                answer: "Ctrl+A"
+            },
+            // Chapter 3 Questions
+            {
+                question: "What does the `/` directory represent in the Linux file-system hierarchy?",
+                options: ["The user's home directory", "The root directory", "A temporary files directory", "A directory for system binaries"],
+                answer: "The root directory"
+            },
+            {
+                question: "Which directory contains system-specific configuration files?",
+                options: ["/bin", "/home", "/etc", "/var"],
+                answer: "/etc"
+            },
+            {
+                question: "Where is the home directory for the administrative superuser, `root`, located?",
+                options: ["/home/root", "/admin", "/root", "/users/root"],
+                answer: "/root"
+            },
+            {
+                question: "What is an absolute path?",
+                options: ["A path relative to the current directory", "A path that starts from the root directory (`/`)", "A shortcut to a file", "The shortest path to a file"],
+                answer: "A path that starts from the root directory (`/`)"
+            },
+            {
+                question: "Which command displays the full path name of the current working directory?",
+                options: ["path", "whereami", "pwd", "dir"],
+                answer: "pwd"
+            },
+            {
+                question: "What does the command `cd ..` do?",
+                options: ["Changes to the user's home directory", "Changes to the root directory", "Changes to the parent directory of the current directory", "Does nothing"],
+                answer: "Changes to the parent directory of the current directory"
+            },
+            {
+                question: "What is the purpose of the `touch` command?",
+                options: ["To edit a file's content", "To update a file's timestamp or create an empty file", "To delete a file", "To change a file's permissions"],
+                answer: "To update a file's timestamp or create an empty file"
+            },
+            {
+                question: "Which command is used to create a new directory?",
+                options: ["newdir", "mkdir", "crdir", "makedir"],
+                answer: "mkdir"
+            },
+            {
+                question: "To copy a directory and its contents, which option must be used with the `cp` command?",
+                options: ["-d", "-c", "-a", "-r"],
+                answer: "-r"
+            },
+            {
+                question: "What does the command `mv oldname.txt newname.txt` do?",
+                options: ["Copies oldname.txt to newname.txt", "Moves oldname.txt to the /newname.txt directory", "Renames oldname.txt to newname.txt", "Creates a link from newname.txt to oldname.txt"],
+                answer: "Renames oldname.txt to newname.txt"
+            },
+            {
+                question: "What is a major limitation of a hard link?",
+                options: ["It cannot point to a directory", "It cannot span across different file systems", "Both A and B", "It is deleted when the original file is deleted"],
+                answer: "Both A and B"
+            },
+             {
+                question: "What does an `l` as the first character in the output of `ls -l` signify?",
+                options: ["A large file", "A log file", "A hard link", "A symbolic link"],
+                answer: "A symbolic link"
+            },
+            {
+                question: "Which pattern matches any file name that starts with 'a' and ends with 'z'?",
+                options: ["a?z", "a*z", "[a-z]", "a[.*]z"],
+                answer: "a*z"
+            },
+            {
+                question: "What does the shell expansion `echo file{1..3}.txt` produce?",
+                options: ["file{1..3}.txt", "file1.txt file2.txt file3.txt", "file1.txt,file2.txt,file3.txt", "file1 file2 file3 .txt"],
+                answer: "file1.txt file2.txt file3.txt"
+            },
+            {
+                question: "What is the purpose of command substitution, as in `echo $(date)`?",
+                options: ["To prevent the 'date' command from running", "To replace `$(date)` with the output of the `date` command", "To store the command `date` in a variable", "To display the text '$(date)' literally"],
+                answer: "To replace `$(date)` with the output of the `date` command"
+            },
+            // Chapter 4 Questions
+            {
+                question: "What command is used to view system manual pages?",
+                options: ["help", "doc", "info", "man"],
+                answer: "man"
+            },
+            {
+                question: "In which `man` page section would you typically find information about user commands?",
+                options: ["Section 5", "Section 8", "Section 1", "Section 3"],
+                answer: "Section 1"
+            },
+            {
+                question: "How would you view the man page for the `/etc/passwd` file format?",
+                options: ["man passwd", "man 1 passwd", "man 5 passwd", "man file passwd"],
+                answer: "man 5 passwd"
+            },
+            {
+                question: "While viewing a man page, which key do you press to search forward for a string?",
+                options: ["f", "s", "/", "?"],
+                answer: "/"
+            },
+            {
+                question: "Which command searches for man pages by keyword in their titles and descriptions?",
+                options: ["man -f", "man -k", "man -s", "man -a"],
+                answer: "man -k"
+            },
+            {
+                question: "The `apropos` command is equivalent to which `man` command option?",
+                options: ["man -K", "man -f", "man -k", "man -w"],
+                answer: "man -k"
+            },
+            {
+                question: "Which directory contains most of the `man` pages?",
+                options: ["/usr/share/doc", "/usr/local/man", "/var/log/man", "/usr/share/man"],
+                answer: "/usr/share/man"
+            },
+             {
+                question: "In the SYNOPSIS section of a man page, what do square brackets `[]` around an argument usually mean?",
+                options: ["The argument is required", "The argument is optional", "The argument is a file path", "The argument must be in uppercase"],
+                answer: "The argument is optional"
+            },
+            {
+                question: "How do you quit viewing a `man` page?",
+                options: ["Ctrl+C", "Esc", "q", "exit"],
+                answer: "q"
+            }
+        ];
+
+        const quizContent = document.getElementById('quiz-content');
+        const questionContainer = document.getElementById('question-container');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const feedback = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+        const resultContainer = document.getElementById('result-container');
+        const scoreElement = document.getElementById('score');
+        const scoreMessageElement = document.getElementById('score-message');
+        const restartBtn = document.getElementById('restart-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const questionCounter = document.getElementById('question-counter');
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedOption = null;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function startQuiz() {
+            shuffleArray(quizData);
+            currentQuestionIndex = 0;
+            score = 0;
+            quizContent.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+            nextBtn.textContent = 'Next';
+            nextBtn.disabled = true;
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            clearPreviousState();
+            if (currentQuestionIndex < quizData.length) {
+                const currentQuestion = quizData[currentQuestionIndex];
+                questionText.textContent = currentQuestion.question;
+                
+                shuffleArray(currentQuestion.options);
+                currentQuestion.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.classList.add('option-btn');
+                    button.addEventListener('click', () => selectOption(button, option));
+                    optionsContainer.appendChild(button);
+                });
+                updateProgress();
+            } else {
+                showResults();
+            }
+        }
+        
+        function clearPreviousState() {
+            optionsContainer.innerHTML = '';
+            feedback.textContent = '';
+            feedback.className = 'mt-4 font-semibold';
+            selectedOption = null;
+            nextBtn.disabled = true;
+        }
+
+        function updateProgress() {
+            const progressPercentage = ((currentQuestionIndex) / quizData.length) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+            questionCounter.textContent = `Question ${currentQuestionIndex + 1} of ${quizData.length}`;
+        }
+        
+        function selectOption(button, option) {
+            if (selectedOption) return;
+
+            selectedOption = button;
+            button.classList.add('selected');
+            
+            checkAnswer(option);
+        }
+
+        function checkAnswer(selectedAnswer) {
+            const correctAnswer = quizData[currentQuestionIndex].answer;
+            const isCorrect = selectedAnswer === correctAnswer;
+
+            if (isCorrect) {
+                score++;
+                selectedOption.classList.remove('selected');
+                selectedOption.classList.add('correct');
+                feedback.textContent = "Correct!";
+                feedback.classList.add('text-green-400');
+            } else {
+                selectedOption.classList.remove('selected');
+                selectedOption.classList.add('incorrect');
+                feedback.innerHTML = `Incorrect. The correct answer is: <br><strong>${correctAnswer}</strong>`;
+                feedback.classList.add('text-red-400');
+                
+                // Highlight the correct answer
+                 Array.from(optionsContainer.children).forEach(btn => {
+                    if (btn.textContent === correctAnswer) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+            
+            nextBtn.disabled = false;
+            if (currentQuestionIndex === quizData.length - 1) {
+                nextBtn.textContent = 'Show Results';
+            }
+        }
+        
+        nextBtn.addEventListener('click', () => {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        });
+        
+        function showResults() {
+            quizContent.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+            const percentage = Math.round((score / quizData.length) * 100);
+            scoreElement.textContent = `${score} / ${quizData.length} (${percentage}%)`;
+
+            let message = '';
+            if (percentage >= 90) {
+                message = "Excellent! You're a Red Hat expert!";
+            } else if (percentage >= 70) {
+                message = "Great job! You know your stuff.";
+            } else if (percentage >= 50) {
+                message = "Good effort. A little more study and you'll be a pro.";
+            } else {
+                message = "Keep studying! You'll get there.";
+            }
+            scoreMessageElement.textContent = message;
+        }
+
+        restartBtn.addEventListener('click', startQuiz);
+
+        // Initial start
+        startQuiz();
+    </script>
+</body>
+</html>
