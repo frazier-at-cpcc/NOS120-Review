@@ -95,9 +95,32 @@
 
     const commands = {
         'ping': async (args) => {
-            const host = args[0];
+            if (args.length === 0) {
+                printToOutput("Usage: ping [-t] [-n count] <hostname_or_ip>");
+                printToOutput("Options:");
+                printToOutput("  -t       Ping the specified host until stopped");
+                printToOutput("  -n count Number of echo requests to send");
+                return;
+            }
+
+            let continuous = false;
+            let packetCount = 4;
+            let host = '';
+
+            // Parse arguments
+            for (let i = 0; i < args.length; i++) {
+                if (args[i] === '-t') {
+                    continuous = true;
+                } else if (args[i] === '-n' && i + 1 < args.length) {
+                    packetCount = parseInt(args[i + 1]);
+                    i++; // Skip the count value
+                } else if (!host) {
+                    host = args[i];
+                }
+            }
+
             if (!host) {
-                printToOutput("Usage: ping <hostname_or_ip>");
+                printToOutput("Usage: ping [-t] [-n count] <hostname_or_ip>");
                 return;
             }
 
@@ -139,19 +162,335 @@
                 printToOutput(`\nPinging ${host} with 32 bytes of data:`);
             }
 
-            for (let i = 0; i < 4; i++) {
+            const maxPings = continuous ? 20 : packetCount; // Limit continuous ping for demo
+            let successCount = 0;
+
+            for (let i = 0; i < maxPings; i++) {
                 await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
                 const time = Math.floor(Math.random() * 50) + 1;
                 const ttl = Math.random() > 0.1 ? 128 : 64; // Simulate different TTLs
-                printToOutput(`Reply from ${ip}: bytes=32 time=${time}ms TTL=${ttl}`);
+                const success = Math.random() > 0.05; // 95% success rate
+
+                if (success) {
+                    printToOutput(`Reply from ${ip}: bytes=32 time=${time}ms TTL=${ttl}`);
+                    successCount++;
+                } else {
+                    printToOutput(`Request timed out.`);
+                }
+
+                if (continuous && i >= 19) {
+                    printToOutput("\nPing stopped (demo limit reached)");
+                    break;
+                }
             }
 
+            const lossRate = Math.round(((maxPings - successCount) / maxPings) * 100);
             printToOutput(`\nPing statistics for ${ip}:`);
-            printToOutput(`    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),`);
+            printToOutput(`    Packets: Sent = ${maxPings}, Received = ${successCount}, Lost = ${maxPings - successCount} (${lossRate}% loss),`);
+
+            if (successCount > 0) {
+                const avgTime = Math.floor(Math.random() * 30) + 20;
+                printToOutput(`Approximate round trip times in milli-seconds:`);
+                printToOutput(`    Minimum = ${avgTime - 5}ms, Maximum = ${avgTime + 10}ms, Average = ${avgTime}ms`);
+            }
+        },
+
+        'ipconfig': (args) => {
+            if (args.length > 0 && args[0].toLowerCase() === '/all') {
+                const output = `
+Windows IP Configuration
+
+   Host Name . . . . . . . . . . . . : STUDENT-PC
+   Primary Dns Suffix  . . . . . . . :
+   Node Type . . . . . . . . . . . . : Hybrid
+   IP Routing Enabled. . . . . . . . : No
+   WINS Proxy Enabled. . . . . . . . : No
+   DNS Suffix Search List. . . . . . : local
+
+Ethernet adapter Local Area Connection:
+
+   Connection-specific DNS Suffix  . : local
+   Description . . . . . . . . . . . : Intel(R) Ethernet Connection
+   Physical Address. . . . . . . . . : 00-1C-42-8D-9E-A1
+   DHCP Enabled. . . . . . . . . . . : Yes
+   Autoconfiguration Enabled . . . . : Yes
+   IPv4 Address. . . . . . . . . . . : 192.168.1.10(Preferred)
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Lease Obtained. . . . . . . . . . : Monday, September 20, 2025 8:15:23 AM
+   Lease Expires . . . . . . . . . . : Tuesday, September 21, 2025 8:15:23 AM
+   Default Gateway . . . . . . . . . : 192.168.1.1
+   DHCP Server . . . . . . . . . . . : 192.168.1.1
+   DNS Servers . . . . . . . . . . . : 8.8.8.8
+                                       8.8.4.4
+   NetBIOS over Tcpip. . . . . . . . : Enabled
+
+Wireless LAN adapter Wi-Fi:
+
+   Media State . . . . . . . . . . . : Media disconnected
+   Connection-specific DNS Suffix  . :
+   Description . . . . . . . . . . . : Intel(R) Wireless-AC 9560
+   Physical Address. . . . . . . . . : 48-A4-72-1B-C3-F2
+   DHCP Enabled. . . . . . . . . . . : Yes
+   Autoconfiguration Enabled . . . . : Yes
+                `;
+            } else {
+                const output = `
+Windows IP Configuration
+
+Ethernet adapter Local Area Connection:
+
+   Connection-specific DNS Suffix  . : local
+   IPv4 Address. . . . . . . . . . . : 192.168.1.10
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : 192.168.1.1
+
+Wireless LAN adapter Wi-Fi:
+
+   Media State . . . . . . . . . . . : Media disconnected
+                `;
+            }
+            printToOutput(output);
+        },
+
+        'nslookup': async (args) => {
+            if (args.length === 0) {
+                printToOutput("Usage: nslookup <hostname> or nslookup <hostname> <dns_server>");
+                return;
+            }
+
+            const hostname = args[0];
+            const dnsServer = args[1] || "8.8.8.8";
+
+            printToOutput(`Server:  dns.google`);
+            printToOutput(`Address:  ${dnsServer}#53`);
+            printToOutput("");
+
+            try {
+                const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${hostname}&type=A`, {
+                    headers: {
+                        'Accept': 'application/dns-json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.Answer && data.Answer.length > 0) {
+                        printToOutput(`Non-authoritative answer:`);
+                        printToOutput(`Name:    ${hostname}`);
+                        data.Answer.forEach(record => {
+                            printToOutput(`Address: ${record.data}`);
+                        });
+                    } else {
+                        printToOutput(`*** dns.google can't find ${hostname}: Non-existent domain`);
+                    }
+                } else {
+                    throw new Error('DNS lookup failed');
+                }
+            } catch (error) {
+                printToOutput(`*** dns.google can't find ${hostname}: Server failure`);
+            }
+        },
+
+        'tracert': async (args) => {
+            if (args.length === 0) {
+                printToOutput("Usage: tracert <hostname>");
+                return;
+            }
+
+            const hostname = args[0];
+            printToOutput(`Tracing route to ${hostname} over a maximum of 30 hops`);
+            printToOutput("");
+
+            const hops = [
+                { ip: "192.168.1.1", times: [1, 1, 1], name: "router.local" },
+                { ip: "10.0.0.1", times: [8, 7, 9], name: "gateway.isp.com" },
+                { ip: "203.0.113.45", times: [15, 14, 16], name: "core1.isp.com" },
+                { ip: "198.51.100.23", times: [23, 22, 24], name: "edge.backbone.net" },
+                { ip: "203.0.113.78", times: [35, 34, 36], name: "ix.peering.net" },
+                { ip: "8.8.8.8", times: [42, 41, 43], name: hostname }
+            ];
+
+            for (let i = 0; i < hops.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const hop = hops[i];
+                const hopNum = (i + 1).toString().padStart(2, ' ');
+                const times = hop.times.map(t => `${t} ms`).join('    ');
+                printToOutput(`  ${hopNum}    ${times}    ${hop.name} [${hop.ip}]`);
+            }
+
+            printToOutput("");
+            printToOutput("Trace complete.");
+        },
+
+        'arp': (args) => {
+            if (args.length > 0 && args[0].toLowerCase() === '-a') {
+                const output = `
+Interface: 192.168.1.10 --- 0x2
+  Internet Address      Physical Address      Type
+  192.168.1.1           00-1a-2b-3c-4d-5e     dynamic
+  192.168.1.15          aa-bb-cc-dd-ee-ff     dynamic
+  192.168.1.20          11-22-33-44-55-66     dynamic
+  192.168.1.255         ff-ff-ff-ff-ff-ff     static
+  224.0.0.22            01-00-5e-00-00-16     static
+  224.0.0.252           01-00-5e-00-00-fc     static
+  239.255.255.250       01-00-5e-7f-ff-fa     static
+                `;
+                printToOutput(output);
+            } else {
+                printToOutput("Usage: arp -a (displays ARP table)");
+            }
+        },
+
+        'route': (args) => {
+            if (args.length === 0 || (args.length > 0 && args[0].toLowerCase() === 'print')) {
+                const output = `
+===========================================================================
+Interface List
+  2...00 1c 42 8d 9e a1 ......Intel(R) Ethernet Connection
+  7...48 a4 72 1b c3 f2 ......Intel(R) Wireless-AC 9560
+  1...........................Software Loopback Interface 1
+===========================================================================
+
+IPv4 Route Table
+===========================================================================
+Active Routes:
+Network Destination        Netmask          Gateway       Interface  Metric
+          0.0.0.0          0.0.0.0      192.168.1.1    192.168.1.10     25
+        127.0.0.0        255.0.0.0         On-link         127.0.0.1    331
+        127.0.0.1  255.255.255.255         On-link         127.0.0.1    331
+  127.255.255.255  255.255.255.255         On-link         127.0.0.1    331
+      192.168.1.0    255.255.255.0         On-link     192.168.1.10    281
+     192.168.1.10  255.255.255.255         On-link     192.168.1.10    281
+    192.168.1.255  255.255.255.255         On-link     192.168.1.10    281
+        224.0.0.0        240.0.0.0         On-link         127.0.0.1    331
+        224.0.0.0        240.0.0.0         On-link     192.168.1.10    281
+  255.255.255.255  255.255.255.255         On-link         127.0.0.1    331
+  255.255.255.255  255.255.255.255         On-link     192.168.1.10    281
+===========================================================================
+Persistent Routes:
+  None
+                `;
+                printToOutput(output);
+            } else {
+                printToOutput("Usage: route print (displays routing table)");
+            }
+        },
+
+        'telnet': async (args) => {
+            if (args.length < 2) {
+                printToOutput("Usage: telnet <hostname> <port>");
+                return;
+            }
+
+            const hostname = args[0];
+            const port = args[1];
+
+            printToOutput(`Trying ${hostname}...`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (port === "80" || port === "443" || port === "22" || port === "23") {
+                printToOutput(`Connected to ${hostname}.`);
+                printToOutput(`Escape character is '^]'.`);
+                await new Promise(resolve => setTimeout(resolve, 500));
+                printToOutput("Connection closed by foreign host.");
+            } else {
+                printToOutput(`telnet: connect to address ${hostname}: Connection refused`);
+            }
+        },
+
+        'nmap': async (args) => {
+            if (args.length === 0) {
+                printToOutput("Usage: nmap <hostname_or_ip>");
+                return;
+            }
+
+            const target = args[0];
+            printToOutput(`Starting Nmap scan on ${target}`);
+            printToOutput("");
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            const ports = [
+                { port: 22, state: "open", service: "ssh" },
+                { port: 53, state: "open", service: "domain" },
+                { port: 80, state: "open", service: "http" },
+                { port: 135, state: "filtered", service: "msrpc" },
+                { port: 443, state: "open", service: "https" },
+                { port: 445, state: "open", service: "microsoft-ds" },
+                { port: 993, state: "closed", service: "imaps" },
+                { port: 995, state: "closed", service: "pop3s" }
+            ];
+
+            printToOutput(`Nmap scan report for ${target}`);
+            printToOutput("PORT     STATE    SERVICE");
+
+            ports.forEach(p => {
+                const portStr = p.port.toString().padEnd(8);
+                const stateStr = p.state.padEnd(8);
+                printToOutput(`${portStr} ${stateStr} ${p.service}`);
+            });
+
+            printToOutput("");
+            printToOutput("Nmap done: 1 IP address (1 host up) scanned");
+        },
+
+        'curl': async (args) => {
+            if (args.length === 0) {
+                printToOutput("Usage: curl <url>");
+                return;
+            }
+
+            const url = args[0];
+            printToOutput(`Connecting to ${url}...`);
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (url.includes("http")) {
+                printToOutput("HTTP/1.1 200 OK");
+                printToOutput("Content-Type: text/html; charset=UTF-8");
+                printToOutput("Content-Length: 1256");
+                printToOutput("Date: Fri, 20 Sep 2025 15:30:00 GMT");
+                printToOutput("Server: Apache/2.4.41");
+                printToOutput("");
+                printToOutput("<!DOCTYPE html>");
+                printToOutput("<html><head><title>Sample Page</title></head>");
+                printToOutput("<body><h1>Hello World!</h1></body></html>");
+            } else {
+                printToOutput(`curl: (6) Could not resolve host: ${url}`);
+            }
         },
 
         'netstat': (args) => {
-            const output = `
+            if (args.length > 0 && args[0].toLowerCase() === '-an') {
+                const output = `
+Active Connections
+
+  Proto  Local Address          Foreign Address        State
+  TCP    0.0.0.0:22             0.0.0.0:0              LISTENING
+  TCP    0.0.0.0:53             0.0.0.0:0              LISTENING
+  TCP    0.0.0.0:80             0.0.0.0:0              LISTENING
+  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING
+  TCP    0.0.0.0:443            0.0.0.0:0              LISTENING
+  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING
+  TCP    127.0.0.1:5357         127.0.0.1:49869        ESTABLISHED
+  TCP    127.0.0.1:49869        127.0.0.1:5357         ESTABLISHED
+  TCP    192.168.1.10:50143     13.107.4.52:443        ESTABLISHED
+  TCP    192.168.1.10:50150     72.21.91.29:80         TIME_WAIT
+  TCP    192.168.1.10:50151     151.101.193.140:443    ESTABLISHED
+  TCP    192.168.1.10:50152     104.244.42.129:443     ESTABLISHED
+  UDP    0.0.0.0:53             *:*
+  UDP    0.0.0.0:67             *:*
+  UDP    0.0.0.0:500            *:*
+  UDP    0.0.0.0:1900           *:*
+  UDP    0.0.0.0:3702           *:*
+  UDP    0.0.0.0:5353           *:*
+  UDP    127.0.0.1:1900         *:*
+  UDP    192.168.1.10:137       *:*
+  UDP    192.168.1.10:138       *:*
+                `;
+                printToOutput(output);
+            } else {
+                const output = `
     Active Connections
 
       Proto  Local Address          Foreign Address        State
@@ -164,18 +503,95 @@
       UDP    0.0.0.0:500            *:*
       UDP    0.0.0.0:3702           *:*
       UDP    127.0.0.1:1900         *:*
-            `;
-            printToOutput(output);
+                `;
+                printToOutput(output);
+            }
         },
 
-        'help': () => {
-            printToOutput(`
-    Available commands:
-      ping <hostname>    - Simulates sending ICMP packets to a host.
-      netstat            - Simulates displaying active network connections.
-      cls                - Clears the screen.
-      help               - Shows this help message.
-            `);
+        'help': (args) => {
+            if (args.length > 0) {
+                const cmd = args[0].toLowerCase();
+                switch (cmd) {
+                    case 'ping':
+                        printToOutput("PING - Tests connectivity to a network host");
+                        printToOutput("Usage: ping [-t] [-n count] <hostname_or_ip>");
+                        printToOutput("  -t       Ping continuously until stopped");
+                        printToOutput("  -n count Number of packets to send (default: 4)");
+                        break;
+                    case 'ipconfig':
+                        printToOutput("IPCONFIG - Displays IP configuration for network adapters");
+                        printToOutput("Usage: ipconfig [/all]");
+                        printToOutput("  /all     Displays detailed configuration for all adapters");
+                        break;
+                    case 'nslookup':
+                        printToOutput("NSLOOKUP - Queries DNS to resolve domain names");
+                        printToOutput("Usage: nslookup <hostname> [dns_server]");
+                        break;
+                    case 'tracert':
+                        printToOutput("TRACERT - Traces the route packets take to a destination");
+                        printToOutput("Usage: tracert <hostname_or_ip>");
+                        break;
+                    case 'arp':
+                        printToOutput("ARP - Displays and modifies the ARP table");
+                        printToOutput("Usage: arp -a");
+                        printToOutput("  -a       Displays current ARP entries");
+                        break;
+                    case 'route':
+                        printToOutput("ROUTE - Displays and modifies the routing table");
+                        printToOutput("Usage: route print");
+                        break;
+                    case 'netstat':
+                        printToOutput("NETSTAT - Displays network connections and listening ports");
+                        printToOutput("Usage: netstat [-an]");
+                        printToOutput("  -an      Displays all connections and listening ports numerically");
+                        break;
+                    case 'telnet':
+                        printToOutput("TELNET - Connects to a remote host");
+                        printToOutput("Usage: telnet <hostname> <port>");
+                        break;
+                    case 'nmap':
+                        printToOutput("NMAP - Network exploration and security auditing tool");
+                        printToOutput("Usage: nmap <hostname_or_ip>");
+                        break;
+                    case 'curl':
+                        printToOutput("CURL - Downloads data from web servers");
+                        printToOutput("Usage: curl <url>");
+                        break;
+                    default:
+                        printToOutput(`No help available for '${cmd}'`);
+                }
+            } else {
+                printToOutput(`
+Network Command Simulator - Available Commands:
+
+CONNECTIVITY TESTING:
+  ping <host>        - Test connectivity to a network host
+  tracert <host>     - Trace route to destination showing each hop
+  telnet <host> <port> - Connect to remote host on specific port
+
+NETWORK CONFIGURATION:
+  ipconfig [/all]    - Display IP configuration for adapters
+  arp -a             - Display ARP table (IP to MAC address mapping)
+  route print        - Display routing table
+  netstat [-an]      - Display active network connections
+
+NETWORK TOOLS:
+  nslookup <host>    - Query DNS to resolve domain names
+  nmap <host>        - Scan ports on target host
+  curl <url>         - Download content from web servers
+
+UTILITY:
+  cls                - Clear the screen
+  help [command]     - Show help (add command name for specific help)
+
+Examples:
+  ping google.com
+  ipconfig /all
+  nslookup github.com
+  tracert 8.8.8.8
+  netstat -an
+                `);
+            }
         },
 
         'cls': () => {
