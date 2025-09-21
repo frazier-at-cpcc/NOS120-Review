@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Command Simulator</title>
+    <style>
+        :root {
+            --background-color: #0d0d0d;
+            --text-color: #00c200;
+            --font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 16px;
+            margin: 0;
+            padding: 15px;
+        }
+
+        #terminal {
+            width: 100%;
+            height: 95vh;
+            overflow-y: auto;
+            white-space: pre-wrap; /* Allows text to wrap */
+            word-wrap: break-word; /* Breaks long words */
+            line-height: 1.4;
+        }
+
+        .output-line {
+            display: block;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .prompt {
+            margin-right: 8px;
+        }
+
+        #commandInput {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-color);
+            font-family: inherit;
+            font-size: inherit;
+            caret-color: var(--text-color);
+        }
+
+        #commandInput:focus {
+            outline: none;
+        }
+
+        .system-message {
+            color: #a0a0a0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="terminal" onclick="document.getElementById('commandInput').focus();">
+    <div id="output"></div>
+    <div class="input-container">
+        <span class="prompt">C:\Users\Student></span>
+        <input type="text" id="commandInput" autofocus autocomplete="off" spellcheck="false" />
+    </div>
+</div>
+
+<script>
+    const terminal = document.getElementById('terminal');
+    const output = document.getElementById('output');
+    const commandInput = document.getElementById('commandInput');
+
+    const printToOutput = (text, isSystemMessage = false) => {
+        const line = document.createElement('div');
+        line.textContent = text;
+        line.classList.add('output-line');
+        if (isSystemMessage) {
+            line.classList.add('system-message');
+        }
+        output.appendChild(line);
+        terminal.scrollTop = terminal.scrollHeight;
+    };
+
+    const printCommandHistory = (command) => {
+        const line = document.createElement('div');
+        line.innerHTML = `<span class="prompt">C:\\Users\\Student></span><span>${command}</span>`;
+        output.appendChild(line);
+    };
+
+    const commands = {
+        'ping': async (args) => {
+            const host = args[0];
+            if (!host) {
+                printToOutput("Usage: ping <hostname_or_ip>");
+                return;
+            }
+
+            const ip = `192.168.1.${Math.floor(Math.random() * 254) + 1}`;
+            printToOutput(`\nPinging ${host} [${ip}] with 32 bytes of data:`);
+
+            for (let i = 0; i < 4; i++) {
+                await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
+                const time = Math.floor(Math.random() * 50) + 1;
+                const ttl = Math.random() > 0.1 ? 128 : 64; // Simulate different TTLs
+                printToOutput(`Reply from ${ip}: bytes=32 time=${time}ms TTL=${ttl}`);
+            }
+
+            printToOutput(`\nPing statistics for ${ip}:`);
+            printToOutput(`    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss),`);
+        },
+
+        'netstat': (args) => {
+            const output = `
+    Active Connections
+
+      Proto  Local Address          Foreign Address        State
+      TCP    127.0.0.1:5357         WebApp-Sim:49869       ESTABLISHED
+      TCP    127.0.0.1:49869        WebApp-Sim:5357        ESTABLISHED
+      TCP    192.168.1.10:50143     13.107.4.52:443        ESTABLISHED
+      TCP    192.168.1.10:50150     72.21.91.29:80         TIME_WAIT
+      TCP    0.0.0.0:135            0.0.0.0:0              LISTENING
+      TCP    0.0.0.0:445            0.0.0.0:0              LISTENING
+      UDP    0.0.0.0:500            *:*
+      UDP    0.0.0.0:3702           *:*
+      UDP    127.0.0.1:1900         *:*
+            `;
+            printToOutput(output);
+        },
+
+        'help': () => {
+            printToOutput(`
+    Available commands:
+      ping <hostname>    - Simulates sending ICMP packets to a host.
+      netstat            - Simulates displaying active network connections.
+      cls                - Clears the screen.
+      help               - Shows this help message.
+            `);
+        },
+
+        'cls': () => {
+            output.innerHTML = '';
+        }
+    };
+
+    const processCommand = async (command) => {
+        const [cmd, ...args] = command.trim().split(/\s+/);
+        const lowerCaseCmd = cmd.toLowerCase();
+
+        if (commands[lowerCaseCmd]) {
+            await commands[lowerCaseCmd](args);
+        } else if (cmd) {
+            printToOutput(`'${cmd}' is not recognized as an internal or external command.`);
+        }
+    };
+
+    commandInput.addEventListener('keydown', async (event) => {
+        if (event.key === 'Enter') {
+            const command = commandInput.value;
+            printCommandHistory(command); // Show the command you just typed
+            commandInput.value = ''; // Clear the input
+
+            await processCommand(command);
+            terminal.scrollTop = terminal.scrollHeight; // Scroll to bottom after output
+        }
+    });
+
+    // Initial welcome message
+    printToOutput("Network Command Simulator [Version 1.0]", true);
+    printToOutput("(c) 2025 Dr. Frazier Smith. All rights reserved.", true);
+    printToOutput("\nType 'help' for a list of available commands.", true);
+    printToOutput("", true);
+</script>
+
+</body>
+</html>
