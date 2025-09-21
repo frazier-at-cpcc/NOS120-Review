@@ -101,8 +101,43 @@
                 return;
             }
 
-            const ip = `192.168.1.${Math.floor(Math.random() * 254) + 1}`;
-            printToOutput(`\nPinging ${host} [${ip}] with 32 bytes of data:`);
+            let ip = host;
+
+            // Check if the input is already an IP address
+            const isIPAddress = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+
+            if (!isIPAddress) {
+                // Try to resolve the domain name to an IP address
+                try {
+                    printToOutput(`Pinging ${host} with 32 bytes of data:`);
+                    printToOutput("Resolving hostname...");
+
+                    // Use a public DNS-over-HTTPS service to resolve the domain
+                    const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${host}&type=A`, {
+                        headers: {
+                            'Accept': 'application/dns-json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.Answer && data.Answer.length > 0) {
+                            ip = data.Answer[0].data;
+                            printToOutput(`\nPinging ${host} [${ip}] with 32 bytes of data:`);
+                        } else {
+                            printToOutput(`Ping request could not find host ${host}. Please check the name and try again.`);
+                            return;
+                        }
+                    } else {
+                        throw new Error('DNS resolution failed');
+                    }
+                } catch (error) {
+                    printToOutput(`Ping request could not find host ${host}. Please check the name and try again.`);
+                    return;
+                }
+            } else {
+                printToOutput(`\nPinging ${host} with 32 bytes of data:`);
+            }
 
             for (let i = 0; i < 4; i++) {
                 await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
